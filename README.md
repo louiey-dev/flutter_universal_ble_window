@@ -7,6 +7,8 @@ flutter windows app for ble test
 - Flutter 3.28.0-1.0.pre.70
 - Dart 3.7.0 (build 3.7.0-232.0.dev) • DevTools 2.41.0
 
+![main_screen](flutter_universal_ble_window.png)
+
 ## TODO
 - Connection
 - read/write feature
