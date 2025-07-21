@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_universal_ble_window/feature/my_utils.dart';
+import 'package:flutter_universal_ble_window/screen/peripheral_select_screen.dart';
 import 'package:flutter_universal_ble_window/widget/my_button.dart';
 import 'package:flutter_universal_ble_window/widget/my_widget.dart';
 import 'package:flutter_universal_ble_window/widget/scanned_item_widget.dart';
@@ -187,6 +188,12 @@ class _ScanScreenState extends State<ScanScreen> {
                     onTap: () {
                       utils.log(
                         "Tapped on device: ${device.name} (${device.deviceId})",
+                      );
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => PeripheralSelectedScreen(device),
+                        ),
                       );
                     },
                   );

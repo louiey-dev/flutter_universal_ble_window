@@ -41,16 +41,6 @@ class ScanMenuWidget extends StatelessWidget {
                 enabled: isScanning,
               ),
               myWIDTH(10),
-              // Switch(
-              //   // This bool value toggles the switch.
-              //   value: onNaPressed(),
-              //   overlayColor: overlayColor,
-              //   trackColor: trackColor,
-              //   thumbColor: const WidgetStatePropertyAll<Color>(Colors.black),
-              //   onChanged: (bool value) {
-              //     utils.log("Switched to : $value");
-              //   },
-              // ),
             ],
           ),
         ],
