@@ -19,3 +19,5 @@ flutter windows app for ble test
     - displays scan results
     - checkbox to filter out "N/A" case
     - Connection is not working
+  - Peripheral selected screen coding
+    - display name and id
