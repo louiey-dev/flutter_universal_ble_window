@@ -9,6 +9,8 @@ flutter windows app for ble test
 
 ![main_screen](flutter_universal_ble_window.png)
 
+![service screen](service_screen.png)
+
 ## TODO
 - Connection
 - read/write feature
@@ -21,3 +23,8 @@ flutter windows app for ble test
     - Connection is not working
   - Peripheral selected screen coding
     - display name and id
+- 2025.07.22
+  - Service screen added
+    - displays service info, uuid, characteristics
+    - extra command buttons
+    - log window

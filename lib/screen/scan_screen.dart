@@ -22,7 +22,7 @@ class ScanScreen extends StatefulWidget {
 class _ScanScreenState extends State<ScanScreen> {
   bool _isScanning = false;
   final _bleDevices = <BleDevice>[];
-  bool _isNaChecked = false;
+  bool _isNaChecked = true;
 
   AvailabilityState? bleAvailabilityState;
 

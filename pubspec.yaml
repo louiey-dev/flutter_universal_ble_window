@@ -37,6 +37,7 @@ dependencies:
   riverpod: ^2.6.1
   flutter_riverpod: ^2.6.1
   universal_ble: ^0.21.0
+  expandable: ^5.0.1
 
 dev_dependencies:
   flutter_test:
