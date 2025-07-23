@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:convert/convert.dart';
 import 'package:expandable/expandable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -24,9 +27,55 @@ class _PeripheralSelectedScreenState extends State<PeripheralSelectedScreen> {
   BleService? selectedService;
   BleCharacteristic? selectedCharacteristic;
 
-  void _addLog(String type, dynamic data) {
-    setState(() {
-      _logs.add('$type: ${data.toString()}');
+  StreamSubscription? connectionStreamSubscription;
+  StreamSubscription? pairingStateSubscription;
+
+  // ? For Write value
+  GlobalKey<FormState> valueFormKey = GlobalKey<FormState>();
+  final binaryCode = TextEditingController();
+
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+
+    // ? Register the connection stream listener.
+    // ? This callback will be triggered when the connection state changes.
+    // ? Connect or disconnect state will be handled in this callback.
+    connectionStreamSubscription = widget.bleDevice.connectionStream.listen(
+      _handleConnectionChange,
+    );
+
+    // ? Register the pairing state stream listener.
+    // ? This callback will be triggered when the pairing state changes.
+    pairingStateSubscription = widget.bleDevice.pairingStateStream.listen(
+      _handlePairingStateChange,
+    );
+
+    UniversalBle.onValueChange = _handleValueChange;
+
+    _asyncInits();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    connectionStreamSubscription?.cancel();
+    pairingStateSubscription?.cancel();
+    UniversalBle.onValueChange = null;
+  }
+
+  // ? This method handles connect/disconnect changes smoothly.
+  // ? If this method is not here, there will happen issue when you try connect/disconnect continuously
+  void _asyncInits() {
+    widget.bleDevice.connectionState.then((state) {
+      if (state == BleConnectionState.connected) {
+        setState(() {
+          isConnected = true;
+        });
+      }
     });
   }
 
@@ -67,17 +116,14 @@ class _PeripheralSelectedScreenState extends State<PeripheralSelectedScreen> {
                 flex: 3,
                 child: Align(
                   alignment: Alignment.topCenter,
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      spacing: 10.0,
-                      children: [
-                        _showServiceInfo(),
-                        _showExtraCommand(),
-                        _logInfo(),
-                      ],
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    spacing: 10.0,
+                    children: [
+                      _showServiceInfo(),
+                      _showExtraCommand(),
+                      _logInfo(),
+                    ],
                   ),
                 ),
               ),
@@ -275,66 +321,146 @@ class _PeripheralSelectedScreenState extends State<PeripheralSelectedScreen> {
           Row(
             spacing: 10,
             children: [
-              PlatformButton(
+              // ? Discover services after connected
+              PlatformBtnToolTip(
+                tooltipStr: 'Discover services of the connected device',
                 onPressed: () async {
                   _discoverServices();
                 },
                 enabled: isConnected,
                 text: 'Discover Services',
               ),
-              PlatformButton(
-                onPressed: () async {},
+              // ? Get the connection state
+              PlatformBtnToolTip(
+                tooltipStr: 'Get the connection state of the device',
+                onPressed: () async {
+                  _addLog(
+                    'ConnectionState',
+                    await widget.bleDevice.connectionState,
+                  );
+                },
                 enabled: isConnected,
                 text: 'Connection State',
               ),
-              PlatformButton(
-                onPressed: () async {},
-                enabled: isConnected,
+              // ? Read
+              PlatformBtnToolTip(
+                tooltipStr: 'Read device via',
+                onPressed: () {
+                  _readValue();
+                },
+                enabled:
+                    isConnected &&
+                    discoveredServices.isNotEmpty &&
+                    _hasSelectedCharacteristicProperty([
+                      CharacteristicProperty.read,
+                    ]),
                 text: 'Read',
               ),
-              PlatformButton(
-                onPressed: () async {},
-                enabled: isConnected,
+              // ? Write
+              PlatformBtnToolTip(
+                tooltipStr: 'Write value to device',
+                onPressed: () async {
+                  _writeMenu(true);
+                },
+                enabled:
+                    isConnected &&
+                    discoveredServices.isNotEmpty &&
+                    _hasSelectedCharacteristicProperty([
+                      CharacteristicProperty.write,
+                    ]),
                 text: 'Write',
               ),
-              PlatformButton(
-                onPressed: () async {},
-                enabled: isConnected,
+              // ? Write w/o response
+              PlatformBtnToolTip(
+                tooltipStr: 'Write without response',
+                onPressed: () async {
+                  _writeMenu(false);
+                },
+                enabled:
+                    isConnected &&
+                    discoveredServices.isNotEmpty &&
+                    _hasSelectedCharacteristicProperty([
+                      CharacteristicProperty.writeWithoutResponse,
+                    ]),
                 text: 'WriteWithoutResponse',
               ),
             ],
           ),
           myHEIGHT(10),
+          // ? Extra commands buttons
           Row(
             spacing: 10,
             children: [
-              PlatformButton(
-                onPressed: () async {},
+              // ? Request MTU
+              PlatformBtnToolTip(
+                tooltipStr: 'Request MTU value',
+                onPressed: () async {
+                  int mtu = await widget.bleDevice.requestMtu(247);
+                  _addLog('MTU', mtu);
+                },
                 enabled: isConnected,
                 text: 'Request MTU',
               ),
-              PlatformButton(
-                onPressed: () async {},
-                enabled: isConnected,
+              // ? Subscribe
+              PlatformBtnToolTip(
+                tooltipStr: 'Subscribe to characteristic notifications',
+                onPressed: () {
+                  _subscribeChar();
+                },
+                enabled:
+                    isConnected &&
+                    discoveredServices.isNotEmpty &&
+                    _hasSelectedCharacteristicProperty([
+                      CharacteristicProperty.notify,
+                      CharacteristicProperty.indicate,
+                    ]),
                 text: 'Subscribe',
               ),
-              PlatformButton(
-                onPressed: () async {},
-                enabled: isConnected,
+              // ? Unsubscribe
+              PlatformBtnToolTip(
+                tooltipStr: 'Unsubscribe from characteristic notifications',
+                onPressed: () {
+                  _unsubscribeChar();
+                },
+                enabled:
+                    isConnected &&
+                    discoveredServices.isNotEmpty &&
+                    _hasSelectedCharacteristicProperty([
+                      CharacteristicProperty.notify,
+                      CharacteristicProperty.indicate,
+                    ]),
                 text: 'Unsubscribe',
               ),
-              PlatformButton(
-                onPressed: () async {},
-                enabled: isConnected,
+              // ? Pairing
+              PlatformBtnToolTip(
+                tooltipStr: 'Pairing with connected device',
+                onPressed: () async {
+                  try {
+                    await widget.bleDevice.pair();
+                    _addLog("Pairing Result", true);
+                  } catch (e) {
+                    _addLog('PairError (${e.runtimeType})', e);
+                  }
+                },
+                enabled: BleCapabilities.supportsAllPairingKinds,
                 text: 'Pair',
               ),
-              PlatformButton(
-                onPressed: () async {},
+              // ? Check paired status
+              PlatformBtnToolTip(
+                tooltipStr: 'Check whether devise is paired',
+                onPressed: () async {
+                  bool? isPaired = await widget.bleDevice.isPaired();
+                  _addLog('isPaired', isPaired);
+                },
                 enabled: isConnected,
                 text: 'isPaired',
               ),
-              PlatformButton(
-                onPressed: () async {},
+              // ? UnPairing
+              PlatformBtnToolTip(
+                tooltipStr: 'UnPair the device',
+                onPressed: () async {
+                  await widget.bleDevice.unpair();
+                },
                 enabled: isConnected,
                 text: 'UnPair',
               ),
@@ -381,22 +507,82 @@ class _PeripheralSelectedScreenState extends State<PeripheralSelectedScreen> {
             ],
           ),
           myHEIGHT(10),
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemBuilder: (context, idx) {
-              return Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Text(_logs[idx], style: const TextStyle(fontSize: 14)),
-              );
-            },
-            separatorBuilder: (context, index) {
-              return Divider(thickness: 2);
-            },
-            itemCount: _logs.length,
+          Container(
+            width: double.infinity,
+            height: 400,
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.greenAccent),
+            ),
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              child: ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemBuilder: (context, idx) {
+                  return Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Text(
+                      _logs[idx],
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                  );
+                },
+                separatorBuilder: (context, index) {
+                  return Divider(thickness: 2);
+                },
+                itemCount: _logs.length,
+              ),
+            ),
           ),
         ],
       ),
+    );
+  }
+
+  _writeMenu(bool withResponse) {
+    final writeValue = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title:
+              withResponse
+                  ? Text('Write Value With Response')
+                  : Text("Write Value Without Response"),
+          content: Text('write input value (00, 01, ...)'),
+          actions: [
+            TextField(
+              controller: writeValue,
+              decoration: InputDecoration(
+                labelText: 'Hex Value',
+                hintText: 'Enter hex value to write without 0x',
+              ),
+              keyboardType: TextInputType.text,
+            ),
+            TextButton(
+              child: Text('Cancel'),
+              onPressed: () {
+                _addLog("Cancel pressed", true);
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: Text('Write'),
+              onPressed: () {
+                _addLog("Write pressed", true);
+                _writeValueFromPopup(
+                  writeValue.text,
+                  withResponse: withResponse,
+                );
+                // 삭제 작업 수행
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -436,5 +622,162 @@ class _PeripheralSelectedScreenState extends State<PeripheralSelectedScreen> {
     } catch (e) {
       _addLog("DiscoverServicesError", '$e\n${kIsWeb ? webWarning : ""}');
     }
+  }
+
+  Future<void> _subscribeChar() async {
+    BleCharacteristic? selectedCharacteristic = this.selectedCharacteristic;
+    if (selectedCharacteristic == null) return;
+    try {
+      var subscription = _getCharacteristicSubscription(selectedCharacteristic);
+      if (subscription == null) throw 'No notify or indicate property';
+      await subscription.subscribe();
+      _addLog('BleCharSubscription', 'Subscribed');
+      // Updates can also be handled by
+      // subscription.listen((data) {});
+    } catch (e) {
+      _addLog('NotifyError', e);
+      utils.log(e.toString());
+    }
+  }
+
+  Future<void> _unsubscribeChar() async {
+    try {
+      await selectedCharacteristic?.unsubscribe();
+      _addLog('BleCharSubscription', 'UnSubscribed');
+    } catch (e) {
+      utils.err(e.toString());
+      _addLog('NotifyError', e);
+    }
+  }
+
+  CharacteristicSubscription? _getCharacteristicSubscription(
+    BleCharacteristic characteristic,
+  ) {
+    var properties = characteristic.properties;
+    if (properties.contains(CharacteristicProperty.notify)) {
+      return characteristic.notifications;
+    } else if (properties.contains(CharacteristicProperty.indicate)) {
+      return characteristic.indications;
+    }
+    return null;
+  }
+
+  bool _hasSelectedCharacteristicProperty(
+    List<CharacteristicProperty> properties,
+  ) {
+    return properties.any(
+      (property) =>
+          selectedCharacteristic?.properties.contains(property) ?? false,
+    );
+  }
+
+  Future<void> _readValue() async {
+    BleCharacteristic? selectedCharacteristic = this.selectedCharacteristic;
+    if (selectedCharacteristic == null) return;
+    try {
+      Uint8List value = await selectedCharacteristic.read();
+      String s = String.fromCharCodes(value);
+      String data = '$s\nraw :  ${value.toString()}';
+      _addLog('Read', data);
+    } catch (e) {
+      _addLog('ReadError', e);
+    }
+  }
+
+  Future<void> _writeValue({required bool withResponse}) async {
+    BleCharacteristic? selectedCharacteristic = this.selectedCharacteristic;
+    if (selectedCharacteristic == null ||
+        !valueFormKey.currentState!.validate() ||
+        binaryCode.text.isEmpty) {
+      return;
+    }
+
+    Uint8List value;
+    try {
+      value = Uint8List.fromList(hex.decode(binaryCode.text));
+    } catch (e) {
+      _addLog('WriteError', "Error parsing hex $e");
+      utils.err("${userFunc()} : $e");
+      return;
+    }
+
+    try {
+      await selectedCharacteristic.write(value, withResponse: withResponse);
+      _addLog('Write${withResponse ? "" : "WithoutResponse"}', value);
+    } catch (e) {
+      debugPrint(e.toString());
+      _addLog('WriteError', e);
+    }
+  }
+
+  Future<void> _writeValueFromPopup(
+    String binCode, {
+    required bool withResponse,
+  }) async {
+    BleCharacteristic? selectedCharacteristic = this.selectedCharacteristic;
+    if (selectedCharacteristic == null ||
+            // !valueFormKey.currentState!.validate() ||
+            binCode
+            .isEmpty) {
+      return;
+    }
+
+    Uint8List value;
+    try {
+      value = Uint8List.fromList(hex.decode(binCode));
+      _addLog("Write value $value", true);
+    } catch (e) {
+      _addLog('WriteError', "Error parsing hex $e");
+      utils.err("${userFunc()} : $e");
+      return;
+    }
+
+    try {
+      _addLog('Write${withResponse ? "" : "WithoutResponse"}', value);
+      await selectedCharacteristic.write(value, withResponse: withResponse);
+    } catch (e) {
+      debugPrint(e.toString());
+      _addLog('WriteError', e);
+    }
+  }
+
+  // callback when device is connected
+  // need to register at bleDevice.connectionStream.listen
+  void _handleConnectionChange(bool isConnected) {
+    utils.log('_handleConnectionChange $isConnected');
+    setState(() {
+      this.isConnected = isConnected;
+    });
+    _addLog('Connection', isConnected ? "Connected" : "Disconnected");
+    // Auto Discover Services
+    if (this.isConnected) {
+      // utils.log("Start to discover services");
+      _discoverServices();
+    }
+  }
+
+  // ? Pairing state change callback
+  void _handlePairingStateChange(bool isPaired) {
+    debugPrint('isPaired $isPaired');
+    _addLog("PairingStateChange - isPaired", isPaired);
+  }
+
+  void _handleValueChange(
+    String deviceId,
+    String characteristicId,
+    Uint8List value,
+  ) {
+    String s = String.fromCharCodes(value);
+    String data = '$s\nraw :  ${value.toString()}';
+    debugPrint('_handleValueChange $characteristicId, $s');
+    _addLog("Value", data);
+  }
+
+  void _addLog(String type, dynamic data) {
+    setState(() {
+      _logs.add('$type: ${data.toString()}');
+    });
+    // Scroll to the bottom after adding new content
+    _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
   }
 }

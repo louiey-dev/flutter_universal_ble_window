@@ -28,3 +28,6 @@ flutter windows app for ble test
     - displays service info, uuid, characteristics
     - extra command buttons
     - log window
+  - 2025.07.23
+    - Connection, scan, extra commands added and tested and all works
+    - maybe I need optimize code after more test

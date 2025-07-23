@@ -119,6 +119,10 @@ class MyUtils {
   }
 }
 
+String userFunc() {
+  return getCurrentMethodName();
+}
+
 String getCurrentMethodName() {
   final frames = StackTrace.current.toString().split('\n');
   final frame =
