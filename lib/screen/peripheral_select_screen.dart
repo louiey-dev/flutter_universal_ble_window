@@ -149,7 +149,28 @@ class _PeripheralSelectedScreenState extends State<PeripheralSelectedScreen> {
                     child: Row(
                       children: [
                         const Icon(Icons.arrow_forward_ios),
-                        Expanded(child: Text(discoveredServices[index].uuid)),
+                        const SizedBox(width: 8),
+                        // if (discoveredServices[index].uuid.contains('1800'))
+                        //   Text(
+                        //     "GAP : ",
+                        //     style: const TextStyle(fontWeight: FontWeight.bold),
+                        //   )
+                        // else if (discoveredServices[index].uuid.contains(
+                        //   '1801',
+                        // ))
+                        //   const Text(
+                        //     "GATT : ",
+                        //     style: TextStyle(fontWeight: FontWeight.bold),
+                        //   ),
+                        Column(
+                          children: [
+                            _findGapGattUuid(discoveredServices[index].uuid),
+                            Text(discoveredServices[index].uuid),
+                            // Expanded(
+                            //   child: Text(discoveredServices[index].uuid),
+                            // ),
+                          ],
+                        ),
                       ],
                     ),
                   ),
@@ -201,6 +222,21 @@ class _PeripheralSelectedScreenState extends State<PeripheralSelectedScreen> {
             );
           },
         );
+  }
+
+  Widget _findGapGattUuid(String uuid) {
+    List<String> id = uuid.split("-");
+
+    if (id[0].contains('1800')) {
+      return Text("GAP", style: const TextStyle(fontWeight: FontWeight.bold));
+    } else if (id[0].contains('1801')) {
+      return Text("GATT", style: const TextStyle(fontWeight: FontWeight.bold));
+    } else {
+      return Text(
+        "Service",
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      );
+    }
   }
 
   _showServiceInfo() {
