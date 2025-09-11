@@ -23,6 +23,7 @@ class _ScanScreenState extends State<ScanScreen> {
   bool _isScanning = false;
   final _bleDevices = <BleDevice>[];
   bool _isNaChecked = true;
+  final TextEditingController _advNameController = TextEditingController();
 
   AvailabilityState? bleAvailabilityState;
 
@@ -119,9 +120,19 @@ class _ScanScreenState extends State<ScanScreen> {
               ),
               myWIDTH(5),
               const Text("N/A"),
+              myWIDTH(30),
+              SizedBox(
+                width: 250,
+                child: TextField(
+                  controller: _advNameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Filter by Advertised Name',
+                    hintText: 'e.g. ble, spp...',
+                  ),
+                ),
+              ),
             ],
           ),
-
           ScanStatusWidget(isScanning: _isScanning),
           // Show scan results
           _showScanResults(),

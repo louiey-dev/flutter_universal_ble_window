@@ -150,18 +150,6 @@ class _PeripheralSelectedScreenState extends State<PeripheralSelectedScreen> {
                       children: [
                         const Icon(Icons.arrow_forward_ios),
                         const SizedBox(width: 8),
-                        // if (discoveredServices[index].uuid.contains('1800'))
-                        //   Text(
-                        //     "GAP : ",
-                        //     style: const TextStyle(fontWeight: FontWeight.bold),
-                        //   )
-                        // else if (discoveredServices[index].uuid.contains(
-                        //   '1801',
-                        // ))
-                        //   const Text(
-                        //     "GATT : ",
-                        //     style: TextStyle(fontWeight: FontWeight.bold),
-                        //   ),
                         Column(
                           children: [
                             _findGapGattUuid(discoveredServices[index].uuid),
@@ -644,7 +632,7 @@ class _PeripheralSelectedScreenState extends State<PeripheralSelectedScreen> {
         '${getCurrentMethodName()} : ${services.length} services discovered',
         true,
       );
-      _addLog("${getCurrentMethodName()} : ${services.toString()}", true);
+      _addLog("${getCurrentMethodName()} : ${services.toString()}\n", true);
       setState(() {
         discoveredServices = services;
       });
