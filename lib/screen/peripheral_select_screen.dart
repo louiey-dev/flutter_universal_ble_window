@@ -740,9 +740,8 @@ class _PeripheralSelectedScreenState extends State<PeripheralSelectedScreen> {
   }) async {
     BleCharacteristic? selectedCharacteristic = this.selectedCharacteristic;
     if (selectedCharacteristic == null ||
-            // !valueFormKey.currentState!.validate() ||
-            binCode
-            .isEmpty) {
+        // !valueFormKey.currentState!.validate() ||
+        binCode.isEmpty) {
       return;
     }
 
